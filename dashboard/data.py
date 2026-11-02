@@ -34,24 +34,24 @@ def find_input(key: str, dirs: list[Path] | None = None) -> Path:
     found = [p for d in (dirs or search_dirs()) if d.is_dir() for p in sorted(d.iterdir())
              if p.is_file() and rx.fullmatch(p.name)]
     if not found:
-        raise DataError(f"Required file '{stem}{ext}' not found in: "
+        raise DataError(f"ไม่พบไฟล์ที่จำเป็น '{stem}{ext}' ในโฟลเดอร์: "
                         + ", ".join(str(d) for d in (dirs or search_dirs())))
     if len({_sha(p) for p in found}) > 1:
-        raise DataError("Ambiguous input: different versions of "
-                        f"'{stem}{ext}' found: " + ", ".join(str(p) for p in found))
+        raise DataError("ไฟล์ไม่ชัดเจน (Ambiguous input): พบไฟล์ "
+                        f"'{stem}{ext}' หลายเวอร์ชันที่เนื้อหาต่างกัน: " + ", ".join(str(p) for p in found))
     return found[0]
 
 
 def _require(df: pd.DataFrame, cols: list[str], name: str):
     miss = [c for c in cols if c not in df.columns]
     if miss:
-        raise DataError(f"{name}: missing required columns {miss}")
+        raise DataError(f"{name}: ไม่พบคอลัมน์ที่จำเป็น {miss}")
 
 
 def _unique(df: pd.DataFrame, cols: list[str], name: str):
     dup = df[df.duplicated(cols, keep=False)]
     if len(dup):
-        raise DataError(f"{name}: {len(dup)} rows conflict on key {cols}")
+        raise DataError(f"{name}: พบ {len(dup)} แถวที่ขัดแย้งกันในคีย์ {cols}")
 
 
 def load_freedom(path: Path | None = None) -> pd.DataFrame:
@@ -59,7 +59,7 @@ def load_freedom(path: Path | None = None) -> pd.DataFrame:
     try:
         df = pd.read_csv(path, encoding="utf-8")
     except Exception as e:  # noqa: BLE001
-        raise DataError(f"Freedom CSV unreadable ({path.name}): {e}") from e
+        raise DataError(f"อ่านไฟล์ Freedom CSV ไม่ได้ ({path.name}): {e}") from e
     _require(df, ["iso3", "country", "data_year", "report_edition", "limits_on_content"], "Freedom CSV")
     _unique(df, ["iso3", "data_year"], "Freedom CSV")
     df["limits_on_content"] = pd.to_numeric(df["limits_on_content"], errors="coerce")
@@ -71,7 +71,7 @@ def load_aiid(path: Path | None = None) -> pd.DataFrame:
     try:
         df = pd.read_excel(path, sheet_name=C.AIID_SHEET, header=C.AIID_HEADER_OFFSET)
     except Exception as e:  # noqa: BLE001
-        raise DataError(f"AIID workbook unreadable ({path.name}, sheet {C.AIID_SHEET}, "
+        raise DataError(f"อ่านไฟล์ AIID ไม่ได้ ({path.name}, ชีต {C.AIID_SHEET}, "
                         f"header offset {C.AIID_HEADER_OFFSET}): {e}") from e
     _require(df, ["Incident ID", "date", "year", "Risk Domain", "Implicated Systems", "title",
                   "description", "Estimated Date"], "AIID Incidents")
@@ -80,7 +80,7 @@ def load_aiid(path: Path | None = None) -> pd.DataFrame:
     df["year"] = pd.to_numeric(df["year"], errors="coerce").astype("Int64")
     bad = int((df["date"].dt.year.astype("Int64") != df["year"]).sum())
     if bad:
-        raise DataError(f"AIID Incidents: {bad} rows where year != year(date)")
+        raise DataError(f"AIID Incidents: พบ {bad} แถวที่ year ไม่ตรงกับปีของ date")
     raw = df["Risk Domain"]
     blank = raw.isna() | raw.astype(str).str.strip().eq("")
     df["domain"] = raw.where(~blank, C.UNCLASSIFIED).astype(str).str.strip()  # raw value retained
@@ -94,7 +94,7 @@ def load_thai(path: Path | None = None) -> pd.DataFrame:
         panel = pd.read_excel(path, sheet_name=C.THAI_PANEL_SHEET)
         acsc = pd.read_excel(path, sheet_name=C.THAI_ACSC_SHEET)
     except Exception as e:  # noqa: BLE001
-        raise DataError(f"Thai workbook unreadable ({path.name}): {e}") from e
+        raise DataError(f"อ่านไฟล์ข้อมูลไทย (Thai workbook) ไม่ได้ ({path.name}): {e}") from e
     _require(panel, ["week_start", "week_end", "acsc_reported", "acsc_cases", "acsc_loss_baht",
                      "acsc_loss_precision", "acsc_loss_per_case_baht", "acsc_top_type_th",
                      "acsc_highest_loss_type_th", "acsc_flag", "acsc_source_url"], "weekly_panel")
@@ -106,14 +106,14 @@ def load_thai(path: Path | None = None) -> pd.DataFrame:
     pws = set(panel["week_start"])
     acsc["panel_week_start"] = [s if s in pws else C.ACSC_DATE_EXCEPTIONS.get(s) for s in acsc["week_start"]]
     if acsc["panel_week_start"].isna().any():
-        raise DataError("acsc_weekly: rows with no panel week and no documented exception: "
+        raise DataError("acsc_weekly: พบแถวที่ไม่มีสัปดาห์ใน panel และไม่มีข้อยกเว้นที่บันทึกไว้: "
                         f"{acsc.loc[acsc['panel_week_start'].isna(), 'week_start'].tolist()}")
-    _unique(acsc, ["panel_week_start"], "acsc_weekly (after exception mapping)")
+    _unique(acsc, ["panel_week_start"], "acsc_weekly (หลังจับคู่ตามข้อยกเว้น)")
     meta = acsc.rename(columns={"week_start": "orig_start", "week_end": "orig_end"})[
         ["panel_week_start", "orig_start", "orig_end", "days", "publisher", "article_date", "notes"]]
     out = panel.merge(meta, left_on="week_start", right_on="panel_week_start", how="left",
                       validate="one_to_one").drop(columns="panel_week_start")
     if len(out) != len(panel) or out["orig_start"].notna().sum() != len(acsc):
-        raise DataError("acsc_weekly attach lost or multiplied rows")
+        raise DataError("การแนบ acsc_weekly ทำให้จำนวนแถวหายหรือเพิ่มขึ้น")
     out["excluded_reason"] = out["week_start"].map(C.COMPARABLE_EXCLUSIONS)
     return out.sort_values("week_start").reset_index(drop=True)

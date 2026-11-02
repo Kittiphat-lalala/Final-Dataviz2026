@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import pandas as pd
 
-DEEPFAKE_RULE_VERSION = "deepfake-keyword-v1 (provisional, review pending)"
-QUALITY_POLICY_VERSION = "acsc-comparable-v1 (proposed, confirmation pending)"
+DEEPFAKE_RULE_VERSION = "deepfake-keyword-v1"  # provisional; status text is shown in the UI
+QUALITY_POLICY_VERSION = "acsc-comparable-v1"  # proposed; status text is shown in the UI
 
 # Input files: stem + extension. Duplicate suffixes such as " (1)" are tolerated.
 INPUTS = {
@@ -25,8 +25,8 @@ ACSC_DATE_EXCEPTIONS = {pd.Timestamp("2026-05-30"): pd.Timestamp("2026-05-31")}
 
 # Proposed comparable-view exclusions (panel week_start -> reason)
 COMPARABLE_EXCLUSIONS = {
-    pd.Timestamp("2026-05-31"): "Overlapping eight-day period (30 May-6 Jun 2026)",
-    pd.Timestamp("2026-08-16"): "Suspect published figures (16-22 Aug 2026)",
+    pd.Timestamp("2026-05-31"): "ช่วงแปดวันที่ซ้อนทับกับสัปดาห์ก่อนหน้า (30 พ.ค.–6 มิ.ย. 2026)",
+    pd.Timestamp("2026-08-16"): "ตัวเลขที่เผยแพร่น่าสงสัย (16–22 ส.ค. 2026)",
 }
 Q3_DEFAULT_START = pd.Timestamp("2025-11-09")
 Q3_DEFAULT_END = pd.Timestamp("2026-10-25")
