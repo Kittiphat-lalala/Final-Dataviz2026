@@ -1,0 +1,18 @@
+# Environments, caches, temporary files
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+.pytest_cache/
+.streamlit/secrets.toml
+.env
+*.log
+.DS_Store
+
+# Raw instructor datasets: keep locally in the project root (see README.md), do not commit
+AIID_Excel_Export-*.xlsx
+freedom_on_the_net_scores*.csv
+thai-disinfo-scam-dataset*.xlsx
+00_Data_Guide_TH*.pdf
+data/
